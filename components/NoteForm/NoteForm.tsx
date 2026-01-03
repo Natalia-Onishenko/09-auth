@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 
 import type { NoteTag } from "../../types/note";
 import { initialDraft, useNoteStore } from "../../lib/store/noteStore";
-import { createNoteAction, type CreateActionState } from "../../app/notes/action/create/actions";
+import {
+  createNoteAction,
+  type CreateActionState,
+} from "../../app/(private routes)/notes/action/create/actions";
 
 import css from "./NoteForm.module.css";
 
@@ -14,24 +16,24 @@ const tags: NoteTag[] = ["Todo", "Work", "Personal", "Meeting", "Shopping"];
 
 const initialState: CreateActionState = { ok: false, error: "" };
 
-export default function NoteForm() {
-  const router = useRouter();
+export default function NoteForm({ onClose }: { onClose: () => void }) {
   const { draft, setDraft, clearDraft } = useNoteStore();
 
-  // якщо persist ще не мав даних — залишимо initialDraft
   useEffect(() => {
     if (!draft) setDraft(initialDraft);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [draft, setDraft]);
 
-  const [state, formAction, pending] = useActionState(createNoteAction, initialState);
+  const [state, formAction, pending] = useActionState(
+    createNoteAction,
+    initialState
+  );
 
   useEffect(() => {
     if (state.ok) {
       clearDraft();
-      router.back();
+      onClose();
     }
-  }, [state.ok, clearDraft, router]);
+  }, [state.ok, clearDraft, onClose]);
 
   const handleChange: React.ChangeEventHandler<
     HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -41,7 +43,7 @@ export default function NoteForm() {
   };
 
   const onCancel = () => {
-    router.back();
+    onClose();
   };
 
   return (
