@@ -1,51 +1,44 @@
-// app/(private routes)/profile/page.tsx
 import type { Metadata } from "next";
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import { headers } from "next/headers";
+
+import { getMe } from "../../../lib/api/serverApi";
 
 import css from "./ProfilePage.module.css";
 
 export const metadata: Metadata = {
-  title: "Profile Page | NoteHub",
+  title: "Profile Page",
   description: "User profile page",
-  robots: { index: false, follow: false },
-  openGraph: {
-    title: "Profile Page | NoteHub",
-    description: "User profile page",
-    type: "website",
-  },
 };
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const cookie = (await headers()).get("cookie") ?? "";
+  const user = await getMe(cookie);
+
   return (
     <main className={css.mainContent}>
       <div className={css.profileCard}>
         <div className={css.header}>
           <h1 className={css.formTitle}>Profile Page</h1>
-
-          <Link
-            href="/profile/edit"
-            prefetch={false}
-            className={css.editProfileButton}
-          >
+          <Link href="/profile/edit" className={css.editProfileButton}>
             Edit Profile
           </Link>
         </div>
 
         <div className={css.avatarWrapper}>
           <Image
-            src="https://ac.goit.global/fullstack/react/default-avatar.png"
-            alt="User Avatar"
+            src={user.avatar}
+            alt="User avatar"
             width={120}
             height={120}
             className={css.avatar}
-            priority
           />
         </div>
 
         <div className={css.profileInfo}>
-          <p>Username: your_username</p>
-          <p>Email: your_email@example.com</p>
+          <p>Username: {user.username}</p>
+          <p>Email: {user.email}</p>
         </div>
       </div>
     </main>

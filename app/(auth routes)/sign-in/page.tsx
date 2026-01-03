@@ -1,13 +1,17 @@
-// app/(auth routes)/sign-in/page.tsx
 "use client";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+
 import { login } from "../../../lib/api/clientApi";
+import { useAuthStore } from "../../../lib/store/authStore";
+
 import css from "./SignInPage.module.css";
 
 export default function SignInPage() {
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
+
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -19,8 +23,9 @@ export default function SignInPage() {
     const password = String(formData.get("password") ?? "");
 
     try {
-      await login({ email, password });
-      router.replace("/profile");
+      const user = await login({ email, password });
+      setUser(user);
+      router.push("/profile");
     } catch {
       setError("Error");
     }

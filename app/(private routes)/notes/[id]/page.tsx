@@ -1,62 +1,40 @@
-// app/notes/[id]/page.tsx
 import type { Metadata } from "next";
-import { fetchNoteById } from "../../../lib/api/api";
+import { headers } from "next/headers";
+import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+import { fetchNoteById } from "../../../../lib/api/serverApi";
+import NotePreview from "../../../../components/NotePreview/NotePreview";
 
-type PageProps = {
-  params: Promise<{ id: string }>;
-};
+type Params = Promise<{ id: string }>;
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: Params;
+}): Promise<Metadata> {
   const { id } = await params;
 
-  try {
-    const note = await fetchNoteById(id);
-
-    const title = `${note.title} | NoteHub`;
-    const description =
-      note.content.length > 140
-        ? `${note.content.slice(0, 140)}…`
-        : note.content;
-
-    const url = `${siteUrl}/notes/${id}`;
-
-    return {
-      title,
-      description,
-      openGraph: {
-        title,
-        description,
-        url,
-        images: [
-          {
-            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
-            width: 1200,
-            height: 630,
-            alt: "NoteHub",
-          },
-        ],
-      },
-    };
-  } catch {
-    return {
-      title: "Note details | NoteHub",
-      description: "NoteHub: view note details.",
-    };
-  }
+  return {
+    title: `Note ${id}`,
+    description: `Note details for ${id}`,
+  };
 }
 
-export default async function NoteDetailsPage({ params }: PageProps) {
+export default async function NotePage({ params }: { params: Params }) {
   const { id } = await params;
-  const note = await fetchNoteById(id);
 
+  const cookie = (await headers()).get("cookie") ?? "";
+
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ["note", id],
+    queryFn: () => fetchNoteById(id, cookie),
+  });
 
   return (
-    <main>
-      <h1>{note.title}</h1>
-      <p>{note.content}</p>
-      <p>Tag: {note.tag}</p>
-    </main>
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <NotePreview noteId={id} />
+    </HydrationBoundary>
   );
 }

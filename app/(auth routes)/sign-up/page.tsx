@@ -1,27 +1,33 @@
-// app/(auth routes)/sign-up/page.tsx
 "use client";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+
 import { register } from "../../../lib/api/clientApi";
+import { useAuthStore } from "../../../lib/store/authStore";
+
 import css from "./SignUpPage.module.css";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const setUser = useAuthStore((s) => s.setUser);
 
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
 
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
 
     try {
-      await register({ email, password });
-      router.replace("/profile");
+      const user = await register({ email, password });
+      setUser(user);
+      router.push("/profile");
     } catch {
       setError("Error");
     }
@@ -60,7 +66,7 @@ export default function SignUpPage() {
           </button>
         </div>
 
-        <p className={css.error}>{error || " "}</p>
+        <p className={css.error}>{error}</p>
       </form>
     </main>
   );

@@ -1,47 +1,58 @@
-// lib/api/serverApi.ts
+import type { AxiosResponse } from "axios";
 import { api } from "./api";
 import type { Note, NoteTag } from "../../types/note";
 import type { User } from "../../types/user";
 
-export type FetchNotesResponse = {
-  notes: Note[];
-  totalPages: number;
-};
-
-export type FetchNotesParams = {
+type FetchNotesParams = {
   page: number;
-  perPage: number; // ALWAYS 12
+  perPage: number;
   search?: string;
   tag?: NoteTag;
 };
 
-function withCookie(cookie: string) {
-  return {
-    headers: {
-      Cookie: cookie,
-    },
-  };
+type FetchNotesResponse = {
+  notes: Note[];
+  totalPages: number;
+};
+
+function withCookie(cookieHeader?: string) {
+  return cookieHeader ? { Cookie: cookieHeader } : undefined;
 }
 
-export async function fetchNotes(params: FetchNotesParams, cookie: string): Promise<FetchNotesResponse> {
-  const { data } = await api.get<FetchNotesResponse>("/notes", {
-    ...withCookie(cookie),
+export async function fetchNotes(
+  params: FetchNotesParams,
+  cookieHeader?: string
+): Promise<FetchNotesResponse> {
+  const res = await api.get<FetchNotesResponse>("/notes", {
     params,
+    headers: withCookie(cookieHeader),
   });
-  return data;
+  return res.data;
 }
 
-export async function fetchNoteById(id: string, cookie: string): Promise<Note> {
-  const { data } = await api.get<Note>(`/notes/${id}`, withCookie(cookie));
-  return data;
+export async function fetchNoteById(
+  id: string,
+  cookieHeader?: string
+): Promise<Note> {
+  const res = await api.get<Note>(`/notes/${id}`, {
+    headers: withCookie(cookieHeader),
+  });
+  return res.data;
 }
 
-export async function getMe(cookie: string): Promise<User> {
-  const { data } = await api.get<User>("/users/me", withCookie(cookie));
-  return data;
+export async function getMe(cookieHeader?: string): Promise<User> {
+  const res = await api.get<User>("/users/me", {
+    headers: withCookie(cookieHeader),
+  });
+  return res.data;
 }
 
-export async function checkSession(cookie: string): Promise<User | null> {
-  const res = await api.get<User | null>("/auth/session", withCookie(cookie));
-  return res.data ?? null;
+export async function checkSession(
+  cookieHeader?: string
+): Promise<AxiosResponse<User | null>> {
+  const res = await api.get<User | null>("/auth/session", {
+    headers: withCookie(cookieHeader),
+    validateStatus: (status) => status === 200,
+  });
+  return res;
 }

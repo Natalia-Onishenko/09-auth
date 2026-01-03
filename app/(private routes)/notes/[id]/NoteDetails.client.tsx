@@ -1,37 +1,28 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNoteById } from "../../../lib/api/api"; 
-import Modal from "../../../components/Modal/Modal"; 
 
-export default function NotePreviewClient({ noteId }: { noteId: string }) {
-  const router = useRouter();
+import { fetchNoteById } from "../../../../lib/api/clientApi";
+import type { Note } from "../../../../types/note";
 
-  const { data, isLoading, isError } = useQuery({
+import css from "./NoteDetailsPage.module.css";
+
+export default function NoteDetailsClient({ noteId }: { noteId: string }) {
+  const { data, isLoading, isError } = useQuery<Note>({
     queryKey: ["note", noteId],
     queryFn: () => fetchNoteById(noteId),
   });
 
-  const close = () => router.back();
+  if (isLoading) return <p>Loading…</p>;
+  if (isError || !data) return <p>Failed to load note</p>;
 
   return (
-    <Modal onClose={close}>
-      <button type="button" onClick={close}>
-        Close
-      </button>
-
-      {isLoading && <p>Loading…</p>}
-      {isError && <p>Failed to load note</p>}
-
-      {data && (
-        <div>
-          <h2>{data.title}</h2>
-          <p>Tag: {data.tag}</p>
-          <p>{data.content}</p>
-          <p>{new Date(data.createdAt).toLocaleString()}</p>
-        </div>
-      )}
-    </Modal>
+    <main className={css.mainContent}>
+      <div className={css.noteCard}>
+        <h1 className={css.title}>{data.title}</h1>
+        <p className={css.content}>{data.content}</p>
+        <p className={css.tag}>{data.tag}</p>
+      </div>
+    </main>
   );
 }
