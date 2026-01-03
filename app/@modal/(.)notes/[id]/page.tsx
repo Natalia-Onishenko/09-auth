@@ -1,4 +1,4 @@
-import NotePreview from "../../../../../components/NotePreview/NotePreview";
+import NotePreview from "../../../../components/NotePreview/NotePreview";
 
 type PageProps = {
   params: { id: string };
