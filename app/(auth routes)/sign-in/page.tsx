@@ -1,33 +1,36 @@
-"use client";
+'use client';
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-
-import { login } from "../../../lib/api/clientApi";
-import { useAuthStore } from "../../../lib/store/authStore";
-
-import css from "./SignInPage.module.css";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { login } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
+import { isAxiosError } from 'axios';
+import css from './SignInPage.module.css';
 
 export default function SignInPage() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setUser = useAuthStore(state => state.setUser);
+  const [error, setError] = useState('');
 
-  const [error, setError] = useState("");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
-    const formData = new FormData(e.currentTarget);
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email')?.toString() || '';
+    const password = formData.get('password')?.toString() || '';
 
     try {
       const user = await login({ email, password });
       setUser(user);
-      router.push("/profile");
-    } catch {
-      setError("Error");
+      router.push('/profile');
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.error || 'Login failed');
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Login failed');
+      }
     }
   };
 
@@ -38,24 +41,12 @@ export default function SignInPage() {
 
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            name="email"
-            className={css.input}
-            required
-          />
+          <input id="email" name="email" type="email" className={css.input} required />
         </div>
 
         <div className={css.formGroup}>
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            name="password"
-            className={css.input}
-            required
-          />
+          <input id="password" name="password" type="password" className={css.input} required />
         </div>
 
         <div className={css.actions}>
@@ -64,7 +55,7 @@ export default function SignInPage() {
           </button>
         </div>
 
-        <p className={css.error}>{error}</p>
+        {error && <p className={css.error}>{error}</p>}
       </form>
     </main>
   );

@@ -1,35 +1,36 @@
-"use client";
+'use client';
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-
-import { register } from "../../../lib/api/clientApi";
-import { useAuthStore } from "../../../lib/store/authStore";
-
-import css from "./SignUpPage.module.css";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { register } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
+import { isAxiosError } from 'axios';
+import css from './SignUpPage.module.css';
 
 export default function SignUpPage() {
   const router = useRouter();
-  const setUser = useAuthStore((s) => s.setUser);
+  const setUser = useAuthStore(state => state.setUser);
+  const [error, setError] = useState('');
 
-  const [error, setError] = useState("");
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
-    const email = String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get('email')?.toString() || '';
+    const password = formData.get('password')?.toString() || '';
 
     try {
       const user = await register({ email, password });
       setUser(user);
-      router.push("/profile");
-    } catch {
-      setError("Error");
+      router.push('/profile');
+    } catch (err) {
+      if (isAxiosError(err)) {
+        setError(err.response?.data?.error || 'Registration failed');
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Registration failed');
+      }
     }
   };
 
@@ -42,8 +43,8 @@ export default function SignUpPage() {
           <label htmlFor="email">Email</label>
           <input
             id="email"
-            type="email"
             name="email"
+            type="email"
             className={css.input}
             required
           />
@@ -53,8 +54,8 @@ export default function SignUpPage() {
           <label htmlFor="password">Password</label>
           <input
             id="password"
-            type="password"
             name="password"
+            type="password"
             className={css.input}
             required
           />
@@ -66,8 +67,9 @@ export default function SignUpPage() {
           </button>
         </div>
 
-        <p className={css.error}>{error}</p>
+        {error && <p className={css.error}>{error}</p>}
       </form>
     </main>
   );
 }
+

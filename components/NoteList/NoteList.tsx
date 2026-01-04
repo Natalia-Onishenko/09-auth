@@ -1,55 +1,50 @@
-"use client";
-
-import type { FC } from "react";
-import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-import { deleteNote } from "../../lib/api/clientApi";
-import type { Note } from "../../types/note";
-import css from "./NoteList.module.css";
+import Link from 'next/link';
+import Loading from '@/app/loading';
+import type { Note } from '@/types/note';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { deleteNote } from '@/lib/api/clientApi';
+import css from './NoteList.module.css';
 
 interface NoteListProps {
   notes: Note[];
+  isLoading: boolean;
+  isFetching: boolean;
 }
 
-const NoteList: FC<NoteListProps> = ({ notes }) => {
+export default function NoteList({ notes, isLoading, isFetching }: NoteListProps) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: deleteNote,
+    mutationFn: (id: string) => deleteNote(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
+  if (isLoading) return <Loading />;
+  if (!notes.length) return <p>No notes found.</p>;
+
   return (
-    <ul className={css.list}>
-      {notes.map((note) => (
-        <li key={note.id} className={css.listItem}>
-          <h3 className={css.title}>{note.title}</h3>
-          <p className={css.content}>{note.content}</p>
+    <>
+      {isFetching && <div className={css.fetchingOverlay}>Loading…</div>}
 
-          <div className={css.footer}>
-            <span className={css.tag}>{note.tag}</span>
-
-            <div>
-              <Link className={css.link} href={`/notes/${note.id}`}>
-                View
+      <ul className={css.list}>
+        {notes.map(note => (
+          <li key={note.id} className={css.listItem}>
+            <h2 className={css.title}>{note.title}</h2>
+            <p className={css.content}>{note.content}</p>
+            <div className={css.footer}>
+              <span className={css.tag}>{note.tag}</span>
+              <Link href={`/notes/${note.id}`} className={css.view}>
+                View details
               </Link>
-
-              <button
-                className={css.button}
-                type="button"
-                onClick={() => mutation.mutate(note.id)}
-              >
+              <button className={css.button} onClick={() => mutation.mutate(note.id)}>
                 Delete
               </button>
             </div>
-          </div>
-        </li>
-      ))}
-    </ul>
+          </li>
+        ))}
+      </ul>
+    </>
   );
-};
-
-export default NoteList;
+}

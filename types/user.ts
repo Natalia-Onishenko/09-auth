@@ -1,6 +1,5 @@
-// types/user.ts
-export type User = {
+export interface User {
   email: string;
   username: string;
   avatar: string;
-};
+}

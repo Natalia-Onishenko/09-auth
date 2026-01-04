@@ -1,85 +1,71 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { useDebounce } from "use-debounce";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from 'use-debounce';
+import { fetchNotes } from '@/lib/api/clientApi';
+import type { FetchNotesParams, FetchNotesResponse } from '@/lib/api/clientApi';
+import { keepPreviousData } from '@tanstack/react-query';
+import Link from 'next/link';
+import NoteList from '@/components/NoteList/NoteList';
+import SearchBox from '@/components/SearchBox/SearchBox';
+import Pagination from '@/components/Pagination/Pagination';
+import ErrorMessage from '@/app/(private routes)/notes/filter/[...slug]/error';
+import Loading from '@/app/loading';
+import css from './NotesPage.module.css';
 
-import { fetchNotes } from "../../../../../lib/api/clientApi";
-import type { NoteTag } from "../../../../../types/note";
-
-import SearchBox from "../../../../../components/SearchBox/SearchBox";
-import Pagination from "../../../../../components/Pagination/Pagination";
-import NoteList from "../../../../../components/NoteList/NoteList";
-
-import css from "./NotesPage.module.css";
-
-interface NotesClientProps {
-  initialPage: number;
-  initialSearch: string;
-  tag?: NoteTag;
+interface Props {
+  tag?: string;
 }
 
-export default function NotesClient({
-  initialPage,
-  initialSearch,
-  tag,
-}: NotesClientProps) {
-  const [search, setSearch] = useState<string>(initialSearch);
-  const [page, setPage] = useState<number>(initialPage);
+export default function NotesClient({ tag = '' }: Props) {
+  const PER_PAGE = 12;
 
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebounce(search, 500);
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["notes", { page, search: debouncedSearch, tag }],
-    queryFn: () =>
-      fetchNotes({
-        page,
-        perPage: 10,
-        search: debouncedSearch,
-        tag,
-      }),
+  const params: FetchNotesParams = {
+    search: debouncedSearch,
+    page,
+    perPage: PER_PAGE,
+    sortBy: 'created',
+    ...(tag ? { tag } : {}),
+  };
+
+  const { data, isLoading, isFetching, isError, error } = useQuery<FetchNotesResponse, Error>({
+    queryKey: ['notes', debouncedSearch, page, tag],
+    queryFn: () => fetchNotes(params),
+    refetchOnMount: false,
+    staleTime: 1000 * 60,
+    placeholderData: keepPreviousData,
   });
 
-  const handleSearchChange = (value: string) => {
+  const handleSearch = (value: string) => {
     setSearch(value);
     setPage(1);
   };
 
-  if (isLoading) {
-    return <p>Loading…</p>;
-  }
-
-  if (isError || !data) {
-    return <p>Failed to load notes</p>;
-  }
+  if (isLoading) return <Loading />;
+  if (isError && error) return <ErrorMessage error={error} />;
+  if (!data) return <Loading />;
 
   return (
-    <div className={css.wrapper}>
-      <div className={css.topBar}>
-        <SearchBox value={search} onChange={handleSearchChange} />
-
-        <Link
-          href="/notes/action/create"
-          prefetch={false}
-          className={css.createButton}
-        >
-          Create note
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox value={search} onChange={handleSearch} />
+        {data.totalPages > 1 && (
+          <Pagination pageCount={data.totalPages} currentPage={page} onPageChange={setPage} />
+        )}
+        <Link href="/notes/action/create" className={css.button}>
+          Create note +
         </Link>
-      </div>
+      </header>
 
-      {data.notes.length === 0 ? (
-        <p>No notes found</p>
-      ) : (
-        <NoteList notes={data.notes} />
-      )}
+      {data.notes.length === 0 && !isFetching && <p>No notes found.</p>}
 
-      {data.totalPages > 1 && (
-        <Pagination
-          currentPage={page}
-          pageCount={data.totalPages}
-          onPageChange={setPage}
-        />
+      {data.notes.length > 0 && (
+        <NoteList notes={data.notes} isLoading={isLoading} isFetching={isFetching} />
       )}
     </div>
   );

@@ -1,26 +1,24 @@
-import { headers } from "next/headers";
-import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
+import { QueryClient, HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import NotePreview from './NotePreview.client';
+import { fetchNoteById } from '@/lib/api/clientApi';
 
-import { fetchNoteById } from "../../../../lib/api/serverApi";
-import NotePreview from "../../../../components/NotePreview/NotePreview";
+type PreviewProps = {
+  params: Promise<{ id: string }>;
+};
 
-type Params = Promise<{ id: string }>;
-
-export default async function NoteModalPage({ params }: { params: Params }) {
-  const { id } = await params;
-
-  const cookie = (await headers()).get("cookie") ?? "";
+export default async function NotePreviewModal(props: PreviewProps) {
+  const { id } = await props.params;
 
   const queryClient = new QueryClient();
-
   await queryClient.prefetchQuery({
-    queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id, cookie),
+    queryKey: ['note', id],
+    queryFn: () => fetchNoteById(id),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotePreview noteId={id} />
+      <NotePreview />
     </HydrationBoundary>
   );
 }
+

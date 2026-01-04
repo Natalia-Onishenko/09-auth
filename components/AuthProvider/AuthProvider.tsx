@@ -1,79 +1,32 @@
-// components/AuthProvider/AuthProvider.tsx
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { checkSession, getMe } from '@/lib/api/clientApi';
+import { useAuthStore } from '@/lib/store/authStore';
+import { useEffect } from 'react';
 
-import { checkSession, logout } from "../../lib/api/clientApi";
-import { useAuthStore } from "../../lib/store/authStore";
-
-const PRIVATE_PREFIXES = ["/profile", "/notes"];
-
-function isPrivatePath(pathname: string) {
-  return PRIVATE_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
-}
-
-export default function AuthProvider({
-  children,
-}: {
+type Props = {
   children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const router = useRouter();
+};
 
-  const setUser = useAuthStore((s) => s.setUser);
-  const clearIsAuthenticated = useAuthStore((s) => s.clearIsAuthenticated);
-
-  const [loading, setLoading] = useState(true);
-  const [blocked, setBlocked] = useState(false);
+export default function AuthProvider({ children }: Props) {
+  const setUser = useAuthStore(state => state.setUser);
+  const clearIsAuthenticated = useAuthStore(state => state.clearIsAuthenticated);
 
   useEffect(() => {
-    let cancelled = false;
+    const fetchUser = async () => {
+      const isAuthenticated = await checkSession();
 
-    async function run() {
-      setLoading(true);
-      setBlocked(false);
-
-      try {
-        const user = await checkSession();
-        if (cancelled) return;
-
-        if (user) {
-          setUser(user);
-          setLoading(false);
-          return;
-        }
-
-        throw new Error("No session");
-      } catch {
-        if (cancelled) return;
-
-        try {
-          await logout();
-        } catch {}
-
+      if (isAuthenticated) {
+        const user = await getMe();
+        if (user) setUser(user);
+      } else {
         clearIsAuthenticated();
-
-        if (isPrivatePath(pathname)) {
-          setBlocked(true);
-          router.replace("/sign-in");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    }
-
-    run();
-
-    return () => {
-      cancelled = true;
     };
-  }, [pathname, router, setUser, clearIsAuthenticated]);
 
-  if (loading) return <p>Loading…</p>;
-  if (blocked) return null;
+    fetchUser();
+  }, [setUser, clearIsAuthenticated]);
 
-  return <>{children}</>;
+  return children;
 }
+

@@ -1,60 +1,63 @@
-// app/(private routes)/notes/filter/[...slug]/page.tsx
-
-import { headers } from "next/headers";
-import {
-  HydrationBoundary,
-  QueryClient,
-  dehydrate,
-} from "@tanstack/react-query";
-
-import { fetchNotes } from "../../../../../lib/api/serverApi";
-import type { NoteTag } from "../../../../../types/note";
-import NotesClient from "./Notes.client";
-
-type Params = {
-  slug?: string[];
-};
-
-type SearchParams = {
-  page?: string;
-  search?: string;
-};
+import { HydrationBoundary, dehydrate, QueryClient } from '@tanstack/react-query';
+import NotesClient from '@/app/(private routes)/notes/filter/[...slug]/Notes.client';
+import { fetchNotes } from '@/lib/api/serverApi';
+import type { FetchNotesParams } from '@/lib/api/clientApi';
+import type { Metadata } from 'next';
 
 type Props = {
-  params: Params;
-  searchParams?: SearchParams;
-};
+  params: Promise<{ slug?: string[] }>;
+}
 
-export default async function NotesFilterPage({
-  params,
-  searchParams,
-}: Props) {
-  const page = Number(searchParams?.page ?? 1);
-  const search = searchParams?.search ?? "";
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const filter = Array.isArray(slug) && slug.length > 0 ? slug.join(' / ') : 'all';
 
-  const tag = params.slug?.[0] as NoteTag | undefined;
+  const title = `Notes filter: ${filter} | NoteHub`;
+  const description = `Notes filtered by ${filter} in NoteHub`;
 
-  const cookie = (await headers()).get("cookie") ?? "";
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/notes/filter/${slug?.join('/') ?? ''}`,
+      images: [
+        {
+          url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+          width: 1200,
+          height: 630,
+          alt: `Notes filter ${filter}`,
+        },
+      ],
+    },
+  };
+}
+
+export default async function NotesPage({ params }: Props) {
+  const { slug } = await params;
 
   const queryClient = new QueryClient();
 
+  const rawTag = slug?.[0];
+  const tag = rawTag === 'all' ? undefined : rawTag;
+
+  const fetchParams: FetchNotesParams = {
+    search: '',
+    page: 1,
+    perPage: 12,
+    sortBy: 'created',
+    ...(tag ? { tag } : {}),
+  };
+
   await queryClient.prefetchQuery({
-    queryKey: ["notes", { page, search, tag }],
-    queryFn: () =>
-      fetchNotes(
-        {
-          page,
-          perPage: 12,
-          search,
-          tag,
-        },
-        cookie
-      ),
+    queryKey: ['notes', fetchParams.search, fetchParams.page, tag],
+    queryFn: () => fetchNotes(fetchParams),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient initialPage={page} initialSearch={search} tag={tag} />
+      <NotesClient tag={tag} />
     </HydrationBoundary>
   );
 }

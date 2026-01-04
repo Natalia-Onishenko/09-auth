@@ -1,40 +1,50 @@
-import type { Metadata } from "next";
-import { headers } from "next/headers";
-import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
+import { QueryClient, HydrationBoundary, dehydrate } from '@tanstack/react-query';
+import { fetchNoteById } from '@/lib/api/serverApi';
+import NoteDetailsClient from '@/app/(private routes)/notes/[id]/NoteDetails.client';
+import type { Metadata } from 'next';
 
-import { fetchNoteById } from "../../../../lib/api/serverApi";
-import NotePreview from "../../../../components/NotePreview/NotePreview";
+type Props = {
+  params: Promise<{ id: string }>;
+};
 
-type Params = Promise<{ id: string }>;
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Params;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  const note = await fetchNoteById(id);
+
+  const title = note.title;
+  const description = note.content ? note.content.slice(0, 100) : 'Note details';
 
   return {
-    title: `Note ${id}`,
-    description: `Note details for ${id}`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/notes/${id}`,
+      images: [
+        {
+          url: 'https://ac.goit.global/fullstack/react/notehub-og-meta.jpg',
+          width: 1200,
+          height: 630,
+          alt: note.title,
+        },
+      ],
+    },
   };
 }
 
-export default async function NotePage({ params }: { params: Params }) {
+export default async function NoteDetails({ params }: Props) {
   const { id } = await params;
-
-  const cookie = (await headers()).get("cookie") ?? "";
-
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-    queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id, cookie),
+    queryKey: ['note', id],
+    queryFn: () => fetchNoteById(id),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotePreview noteId={id} />
+      <NoteDetailsClient />
     </HydrationBoundary>
   );
 }

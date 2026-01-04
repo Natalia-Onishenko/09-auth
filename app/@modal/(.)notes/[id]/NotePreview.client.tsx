@@ -1,55 +1,54 @@
-// app/(private routes)/notes/[id]/NotePreview.client.tsx
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import Modal from '@/components/Modal/Modal';
+import { fetchNoteById } from '@/lib/api/clientApi';
+import type { Note } from '@/types/note';
+import css from './NotePreview.module.css';
 
-import { fetchNoteById } from "../../../../lib/api/clientApi";
-import type { Note } from "../../../../types/note";
-
-import Modal from "../../../../components/Modal/Modal";
-import css from "./NotePreview.module.css";
-
-interface NotePreviewClientProps {
-  noteId: string;
-}
-
-export default function NotePreviewClient({ noteId }: NotePreviewClientProps) {
+export default function NotePreview() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
-  const { data: note, isLoading, isError } = useQuery<Note>({
-    queryKey: ["note", noteId],
-    queryFn: () => fetchNoteById(noteId),
-    enabled: Boolean(noteId),
+  const { data: note, isLoading, isError, error } = useQuery<Note, Error>({
+    queryKey: ['note', id],
+    queryFn: () => fetchNoteById(id),
+    refetchOnMount: false,
   });
 
-  const now = new Date().toLocaleDateString();
+  const close = () => router.back();
+
+  if (!id) return null;
+
+  if (isLoading)
+    return <Modal onClose={close}>Loading, please wait...</Modal>;
+  
+  if (isError)
+    return <Modal onClose={close}>Error: {error?.message}</Modal>;
+  
+  if (!note)
+    return <Modal onClose={close}>Note not found</Modal>;
 
   return (
-    <Modal onClose={() => router.back()}>
+    <Modal onClose={close}>
       <div className={css.container}>
-        <button className={css.backBtn} type="button" onClick={() => router.back()}>
-          Back
-        </button>
-
         <div className={css.item}>
           <div className={css.header}>
-            <h2>Note #{noteId}</h2>
-            <span className={css.tag}>{note?.tag ?? ""}</span>
+            <h2>{note.title}</h2>
           </div>
 
-          <div className={css.content}>
-            {isLoading && "Loading…"}
-            {isError && "Failed to load note"}
-            {!isLoading && !isError && note && (
-              <>
-                <h3>{note.title}</h3>
-                <p>{note.content}</p>
-              </>
-            )}
-          </div>
+          <p className={css.content}>{note.content}</p>
 
-          <div className={css.date}>{now}</div>
+          {note.tag && <span className={css.tag}>{note.tag}</span>}
+
+          <p className={css.date}>
+            {new Date(note.createdAt).toLocaleString()}
+          </p>
+
+          <button className={css.backBtn} onClick={close}>
+            ← Back
+          </button>
         </div>
       </div>
     </Modal>

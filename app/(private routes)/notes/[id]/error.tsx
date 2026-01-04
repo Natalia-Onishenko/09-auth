@@ -1,14 +1,9 @@
-"use client";
+'use client';
 
-interface NoteDetailsErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
+interface ErrorMessageProps {
+  error: Error;
 }
 
-export default function NoteDetailsError({
-  error,
-}: NoteDetailsErrorProps) {
-  return (
-    <p>Could not fetch note details. {error.message}</p>
-  );
+export default function ErrorMessage({ error }: ErrorMessageProps) {
+  return <p>Could not fetch the list of notes. {error.message}</p>;
 }
