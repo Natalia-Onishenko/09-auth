@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { NoteTag } from "../../types/note";
@@ -19,7 +20,12 @@ type CreateNotePayload = {
   tag: NoteTag;
 };
 
-export default function NoteForm({ onClose }: { onClose: () => void }) {
+type NoteFormProps = {
+  onClose?: () => void;
+};
+
+export default function NoteForm({ onClose }: NoteFormProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { draft, setDraft, clearDraft } = useNoteStore();
 
@@ -27,12 +33,17 @@ export default function NoteForm({ onClose }: { onClose: () => void }) {
     if (!draft) setDraft(initialDraft);
   }, [draft, setDraft]);
 
+  const close = () => {
+    if (onClose) onClose();
+    else router.back();
+  };
+
   const mutation = useMutation({
     mutationFn: (payload: CreateNotePayload) => createNote(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["notes"] });
       clearDraft();
-      onClose();
+      close();
     },
   });
 
@@ -41,10 +52,6 @@ export default function NoteForm({ onClose }: { onClose: () => void }) {
   > = (e) => {
     const { name, value } = e.currentTarget;
     setDraft({ [name]: value } as Partial<Draft>);
-  };
-
-  const onCancel = () => {
-    onClose();
   };
 
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
@@ -119,11 +126,15 @@ export default function NoteForm({ onClose }: { onClose: () => void }) {
       {errorText ? <p className={css.error}>{errorText}</p> : null}
 
       <div className={css.actions}>
-        <button className={css.submit} type="submit" disabled={mutation.isPending}>
+        <button
+          className={css.submit}
+          type="submit"
+          disabled={mutation.isPending}
+        >
           Create
         </button>
 
-        <button className={css.cancel} type="button" onClick={onCancel}>
+        <button className={css.cancel} type="button" onClick={close}>
           Cancel
         </button>
       </div>
