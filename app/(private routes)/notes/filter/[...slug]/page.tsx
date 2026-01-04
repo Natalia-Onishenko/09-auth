@@ -1,6 +1,6 @@
 // app/(private routes)/notes/filter/[...slug]/page.tsx
 
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import {
   HydrationBoundary,
   QueryClient,
@@ -34,7 +34,7 @@ export default async function NotesFilterPage({
 
   const tag = params.slug?.[0] as NoteTag | undefined;
 
-  const cookie = cookies().toString();
+  const cookie = (await headers()).get("cookie") ?? "";
 
   const queryClient = new QueryClient();
 
@@ -54,7 +54,7 @@ export default async function NotesFilterPage({
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <NotesClient page={page} search={search} tag={tag} />
+      <NotesClient initialPage={page} initialSearch={search} tag={tag} />
     </HydrationBoundary>
   );
 }

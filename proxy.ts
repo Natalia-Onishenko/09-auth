@@ -1,70 +1,89 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
 import { checkSession } from "./lib/api/serverApi";
-import type { AxiosResponse } from "axios";
-import type { User } from "./types/user";
 
 const PRIVATE_PREFIXES = ["/profile", "/notes"] as const;
 const AUTH_ROUTES = ["/sign-in", "/sign-up"] as const;
 
-function isPrivateRoute(pathname: string): boolean {
+function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-function isAuthRoute(pathname: string): boolean {
-  return AUTH_ROUTES.some((p) => pathname === p);
+function isAuthPath(pathname: string): boolean {
+  return AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]);
 }
 
-function normalizeSetCookieHeader(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value) && value.every((v) => typeof v === "string")) return value;
+function toCookieHeader(req: NextRequest): string {
+  const header = req.headers.get("cookie");
+  return header ?? "";
+}
+
+function normalizeSetCookie(value: unknown): string[] {
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return [value];
+  }
   return [];
 }
 
-function applySetCookieHeaders(res: NextResponse, setCookies: string[]): NextResponse {
-  for (const c of setCookies) res.headers.append("set-cookie", c);
-  return res;
-}
+export async function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-export async function proxy(req: NextRequest): Promise<NextResponse> {
-  const pathname = req.nextUrl.pathname;
+  const isPrivate = isPrivatePath(pathname);
+  const isAuthRoute = isAuthPath(pathname);
 
   const accessToken = req.cookies.get("accessToken")?.value;
   const refreshToken = req.cookies.get("refreshToken")?.value;
 
-  const isPrivate = isPrivateRoute(pathname);
-  const isAuth = isAuthRoute(pathname);
-
   let isAuthenticated = false;
-  let setCookies: string[] = [];
+  let refreshedCookies: string[] = [];
 
   if (accessToken) {
     isAuthenticated = true;
   } else if (refreshToken) {
     try {
-      const cookieHeader = req.headers.get("cookie") ?? "";
-      const response: AxiosResponse<User | null> = await checkSession(cookieHeader);
-      isAuthenticated = Boolean(response.data);
+      const cookieHeader = toCookieHeader(req);
+      const resp = await checkSession(cookieHeader);
 
-      const responseSetCookie = (response.headers as Record<string, unknown>)["set-cookie"];
-      setCookies = normalizeSetCookieHeader(responseSetCookie);
+      const setCookieRaw: unknown = (resp.headers as Record<string, unknown>)[
+        "set-cookie"
+      ];
+      refreshedCookies = normalizeSetCookie(setCookieRaw);
+
+      isAuthenticated = Boolean(resp.data);
     } catch {
       isAuthenticated = false;
-      setCookies = [];
+      refreshedCookies = [];
     }
+  } else {
+    isAuthenticated = false;
   }
 
   if (isPrivate && !isAuthenticated) {
     const url = req.nextUrl.clone();
     url.pathname = "/sign-in";
-    return applySetCookieHeaders(NextResponse.redirect(url), setCookies);
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
-  if (isAuth && isAuthenticated) {
+  if (isAuthRoute && isAuthenticated) {
     const url = req.nextUrl.clone();
     url.pathname = "/";
-    return applySetCookieHeaders(NextResponse.redirect(url), setCookies);
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
-  return applySetCookieHeaders(NextResponse.next(), setCookies);
+  const res = NextResponse.next();
+
+  for (const c of refreshedCookies) {
+    res.headers.append("set-cookie", c);
+  }
+
+  return res;
 }
+
+export const config = {
+  matcher: ["/profile/:path*", "/notes/:path*", "/sign-in", "/sign-up"],
+};

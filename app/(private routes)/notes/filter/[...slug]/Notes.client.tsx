@@ -17,7 +17,7 @@ import css from "./NotesPage.module.css";
 interface NotesClientProps {
   initialPage: number;
   initialSearch: string;
-  tag: NoteTag;
+  tag?: NoteTag;
 }
 
 export default function NotesClient({

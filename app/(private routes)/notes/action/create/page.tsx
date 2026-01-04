@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
-import NoteForm from "../../../../components/NoteForm/NoteForm";
+import NoteForm from "../../../../../components/NoteForm/NoteForm";
 import css from "./CreateNote.module.css";
 
-import { getSiteUrl, OG_IMAGE } from "../../../../lib/seo/site";
+import { getSiteUrl, OG_IMAGE } from "../../../../../lib/seo/site";
 
 const PATH = "/notes/action/create";
 
@@ -31,7 +31,7 @@ export default function CreateNotePage() {
     <main className={css.main}>
       <div className={css.container}>
         <h1 className={css.title}>Create note</h1>
-        <NoteForm />
+        <NoteForm onClose={() => {}} />
       </div>
     </main>
   );
