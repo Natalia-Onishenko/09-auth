@@ -1,39 +1,47 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { getMe, updateMe } from '@/lib/api/clientApi';
-import type { User } from '@/types/user';
-import css from './EditProfilePage.module.css';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { getMe, updateMe } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
+import type { User } from "@/types/user";
+import css from "./EditProfilePage.module.css";
 
 export default function ProfileEditPage() {
   const router = useRouter();
+  const setAuthUser = useAuthStore((state) => state.setUser);
 
   const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState("");
 
   useEffect(() => {
     const fetchUser = async () => {
       const data = await getMe();
       setUser(data);
       setUsername(data.username);
+      setAuthUser(data);
     };
 
     fetchUser();
-  }, []);
+  }, [setAuthUser]);
 
-  const handleSave = async (event: React.FormEvent) => {
+  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!user) return;
 
-    await updateMe({ username });
+    const updated = await updateMe({ username });
+    const freshUser: User = (updated as User) ?? (await getMe());
 
-    router.push('/profile');
+    setUser(freshUser);
+    setUsername(freshUser.username);
+    setAuthUser(freshUser);
+
+    router.push("/profile");
   };
-    
+
   const handleCancel = () => {
-    router.push('/profile');
+    router.push("/profile");
   };
 
   if (!user) {
@@ -47,7 +55,7 @@ export default function ProfileEditPage() {
 
         <div className={css.avatarWrapper}>
           <Image
-            src={user.avatar || 'https://ac.goit.global/fullstack/react/avatar.png'}
+            src={user.avatar || "https://ac.goit.global/fullstack/react/avatar.png"}
             alt="User Avatar"
             width={120}
             height={120}
@@ -63,7 +71,9 @@ export default function ProfileEditPage() {
               type="text"
               className={css.input}
               value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                setUsername(event.target.value)
+              }
               required
             />
           </div>
@@ -74,10 +84,7 @@ export default function ProfileEditPage() {
             <button type="submit" className={css.saveButton}>
               Save
             </button>
-            <button
-              type="button"
-              className={css.cancelButton}
-              onClick={handleCancel}>
+            <button type="button" className={css.cancelButton} onClick={handleCancel}>
               Cancel
             </button>
           </div>
@@ -86,4 +93,3 @@ export default function ProfileEditPage() {
     </main>
   );
 }
-
